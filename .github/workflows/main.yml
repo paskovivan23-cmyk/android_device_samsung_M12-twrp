@@ -1,0 +1,44 @@
+name: Build TWRP from official instructions
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y git-core repo build-essential bc python3
+
+    - name: Init TWRP source
+      run: |
+        mkdir -p ~/twrp
+        cd ~/twrp
+        repo init --depth=1 -u git://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-11.0
+
+    - name: Sync source
+      run: |
+        cd ~/twrp
+        repo sync -j4 --no-tags -c -s
+
+    - name: Clone device tree
+      run: |
+        cd ~/twrp
+        mkdir -p device/samsung
+        git clone https://github.com/AKNoryx28/android_device_samsung_M12-twrp.git -b android-11.0 device/samsung/M12
+
+    - name: Build recovery
+      run: |
+        cd ~/twrp
+        export ALLOW_MISSING_DEPENDENCIES=true
+        source build/envsetup.sh
+        lunch twrp_m12-eng
+        mka recoveryimage
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: twrp
+        path: ~/twrp/out/target/product/M12/recovery.img
